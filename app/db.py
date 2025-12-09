@@ -19,6 +19,9 @@ class Base(DeclarativeBase):
 class User(SQLAlchemyBaseUserTableUUID, Base):
     posts = relationship("Post", back_populates="user")
     comments = relationship("Comments", back_populates="user")
+    chats_as_user1 = relationship("Chat", back_populates="user1", foreign_keys="Chat.user1_id")
+    chats_as_user2 = relationship("Chat", back_populates="user2", foreign_keys="Chat.user2_id")
+
 
 
 class Post(Base):
@@ -30,6 +33,7 @@ class Post(Base):
     url = Column(String, nullable=False)
     file_type = Column(String, nullable=False)
     file_name = Column(String, nullable=False)
+    category= Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="posts")
@@ -59,6 +63,44 @@ class Likes(Base):
 
     post=relationship("Post",back_populates="likes")
     user=relationship("User")
+"""
+class Message(Base):
+    __tablename__="messages"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    sender_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    receiver_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    content = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    sender = relationship("User", foreign_keys=[sender_id])
+    receiver = relationship("User", foreign_keys=[receiver_id])
+
+"""
+class Chat(Base):
+    __tablename__ = "chats"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user1_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    user2_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user1 = relationship("User", foreign_keys=[user1_id], back_populates="chats_as_user1")
+    user2 = relationship("User", foreign_keys=[user2_id], back_populates="chats_as_user2")
+
+    messages = relationship("ChatMessage", back_populates="chat", cascade="all, delete-orphan")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    chat_id = Column(UUID(as_uuid=True), ForeignKey("chats.id"), nullable=False)
+    sender_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    chat = relationship("Chat", back_populates="messages")
+    sender = relationship("User")
 
 
 engine = create_async_engine(DATABASE_URL)
@@ -77,3 +119,4 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def get_user_db(session: AsyncSession = Depends(get_async_session)):
     yield SQLAlchemyUserDatabase(session, User)
+
